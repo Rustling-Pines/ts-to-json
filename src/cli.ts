@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import path from 'path';
 import dotenv from 'dotenv';
 import { processTranslations } from './processTranslations';

@@ -2,9 +2,11 @@
   "name": "@rustling-pines/ts-to-json",
   "version": "0.0.1",
   "scripts": {
+    "clean": "rm -rf dist",
     "build": "tsc",
     "start": "node dist/cli.js",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "clean-build-start": "npm run clean && npm run build && npm start"
   },
   "bin": {
     "generate-translations": "./dist/cli.js"

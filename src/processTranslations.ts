@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { register } from 'ts-node';
 import fs from 'fs-extra';
 import path from 'path';
@@ -7,16 +9,19 @@ export async function processTranslations(
     localesOutputDirectory: string,
     tempDir: string
 ): Promise<void> {
-    const tempFilePath = path.resolve(
-        tempDir,
-        path.relative('src', path.dirname(translationInputFile)), // Adjust path relative to "src"
-        path.basename(translationInputFile, '.ts') + '.js'
-    );
+    const relativePath = path.relative('src', path.dirname(translationInputFile));
+    const tempTranslationsDir = path.resolve(tempDir, relativePath);
+    const tempFilePath = path.resolve(tempTranslationsDir, path.basename(translationInputFile, '.ts') + '.js');
 
     try {
-        // Validate input path
+        console.log(`🛠️  Starting Translation Processing...`);
+        console.log(`📥 Input File: ${translationInputFile}`);
+        console.log(`📂 Output Directory: ${localesOutputDirectory}`);
+        console.log(`🔧 Temp File Path: ${tempFilePath}`);
+
+        // Ensure the translation input file exists
         if (!fs.existsSync(translationInputFile)) {
-            throw new Error(`Translation file not found: ${translationInputFile}`);
+            throw new Error(`❌ Translation file not found: ${translationInputFile}`);
         }
 
         // Ensure the output directory exists
@@ -24,20 +29,26 @@ export async function processTranslations(
             fs.mkdirsSync(localesOutputDirectory);
         }
 
-        // Pre-generate the JavaScript file from the TypeScript file
-        console.log(`🛠️  Compiling Translation file...`);
+        // Compile the TypeScript file
+        console.log(`🛠️  Compiling TypeScript file...`);
         require('child_process').execSync(`npx tsc ${translationInputFile} --outDir ${tempDir}`, {
-            stdio: 'inherit', // Display compilation output
+            stdio: 'inherit',
         });
 
-        console.log('🔧 Temp file path:', tempFilePath);
-
-        // Ensure the temp file exists before importing
+        // Verify the temp file exists
         if (!fs.existsSync(tempFilePath)) {
+            console.log(`❌ Temp file not found: ${tempFilePath}`);
+            console.log(`🔍 Debug: Temp directory contents:`);
+            if (fs.existsSync(tempDir)) {
+                const tempFiles = fs.readdirSync(tempDir);
+                tempFiles.forEach(file => console.log(`  - ${file}`));
+            } else {
+                console.log(`⚠️ Temp directory does not exist.`);
+            }
             throw new Error(`❌ Compiled temp file not found: ${tempFilePath}`);
         }
 
-        // Register ts-node for TypeScript support
+        // Register ts-node for TypeScript imports
         register({
             project: path.resolve(process.cwd(), 'tsconfig.json'),
         });
@@ -46,13 +57,13 @@ export async function processTranslations(
         console.log(`🔄 Loading translation configuration from: ${tempFilePath}`);
         let { locales, translations } = await import(tempFilePath);
 
-        // Validate the locales array
+        // Validate locales array
         if (!Array.isArray(locales) || locales.length === 0) {
             console.warn(`⚠️ Warning: Locales array is empty or invalid. Defaulting to ['en-us'].`);
             locales = ['en-us'];
         }
 
-        // Write the translations content to locale-specific files
+        // Generate JSON files for each locale
         for (const locale of locales) {
             const localeFileContent = translations.map((translation: Record<string, string>) => ({
                 Key: translation.key,
@@ -67,9 +78,17 @@ export async function processTranslations(
         console.log(`✅ All locale files generated successfully!`);
     } catch (error) {
         console.error(`❌ Error during processing:`, error instanceof Error ? error.message : error);
-        throw error; // Re-throw the error to ensure it is handled properly
+
+        // Debug temp directory contents if an error occurs
+        console.log(`🔍 Debug: Temp directory contents:`);
+        if (fs.existsSync(tempDir)) {
+            const tempFiles = fs.readdirSync(tempDir);
+            tempFiles.forEach(file => console.log(`  - ${file}`));
+        } else {
+            console.log(`⚠️ Temp directory does not exist.`);
+        }
+        throw error;
     } finally {
-        // Cleanup temporary files
         console.log(`🧹 Cleaning up temporary files...`);
         if (fs.existsSync(tempDir)) {
             fs.removeSync(tempDir);
