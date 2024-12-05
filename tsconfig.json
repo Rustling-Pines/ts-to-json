@@ -12,11 +12,11 @@
         "outDir": "./dist" // Output directory for transpiled files
     },
     "include": [
-        "src/**/*",
-        "src/translations/.config.ts"
+        "src/**/*"
     ], // Include all files in the src folder
     "exclude": [
         "node_modules",
-        "dist"
+        "dist",
+        "src/translations"
     ] // Exclude node_modules and dist folder
 }

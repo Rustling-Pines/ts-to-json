@@ -1,0 +1,10 @@
+[
+  {
+    "Key": "WELCOME-LABEL",
+    "Value": "Welcome"
+  },
+  {
+    "Key": "GOODBYE-LABEL",
+    "Value": "Goodbye"
+  }
+]
