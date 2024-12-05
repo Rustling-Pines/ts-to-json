@@ -6,26 +6,36 @@ import fs from 'fs-extra';
 import path from 'path';
 
 async function runAll(): Promise<void> {
+    // Default paths for translation file and output JSON directory
+    const defaultTranslationPath = 'src/translations/index.ts'; // Updated for index.ts
+    const defaultLocalesDir = 'public/locales';
+
+    // Read paths from environment variables or fallback to defaults
+    const translationPath = process.env.TRANSLATIONS_INPUT_FILE || defaultTranslationPath;
+    const localesOutputDirectory = process.env.LOCALES_OUTPUT_DIRECTORY || path.resolve(process.cwd(), defaultLocalesDir);
+
+    // Temporary directory and file path
+    const tempDir = path.resolve(process.cwd(), '.temp');
+    const tempFilePath = path.resolve(tempDir, path.basename(translationPath, '.ts') + '.js');
+
     try {
-        // Default paths for translation file and output JSON file
-        const defaultTranslationPath = 'src/translations/translation.config.ts';
-        const defaultOutputFile = 'public/locales/converted.json';
+        // Validate input path
+        if (!fs.existsSync(translationPath)) {
+            throw new Error(`Translation file not found: ${translationPath}`);
+        }
 
-        // Read paths from environment variables or fallback to defaults
-        const translationPath = process.env.TRANSLATION_PATH || defaultTranslationPath;
-        const outputFile = process.env.OUTPUT_FILE || path.resolve(process.cwd(), defaultOutputFile);
-
-        // Temporary directory and file path
-        const tempDir = path.resolve(process.cwd(), '.temp');
-        const tempFilePath = path.resolve(tempDir, path.basename(translationPath, '.ts') + '.js');
+        // Ensure the output directory exists
+        if (!fs.existsSync(localesOutputDirectory)) {
+            fs.mkdirsSync(localesOutputDirectory);
+        }
 
         // Logging paths for clarity
-        console.log(`Using translation file: ${translationPath}`);
-        console.log(`Temporary file path: ${tempFilePath}`);
-        console.log(`Output JSON file: ${outputFile}`);
+        console.log(`🚀 Starting Translations-to-Locales JSON Conversion Process...`);
+        console.log(`📥 Input Translations File (TypeScript): ${translationPath}`);
+        console.log(`📂 Locales Output Directory: ${localesOutputDirectory}`);
 
         // Step 1: Pre-generate the JavaScript file from the TypeScript file
-        console.log('Compiling TypeScript translation file...');
+        console.log(`🛠️ Compiling TypeScript translation file...`);
         execSync(`tsc ${translationPath} --outDir ${tempDir}`, {
             stdio: 'inherit', // Display compilation output
         });
@@ -36,20 +46,31 @@ async function runAll(): Promise<void> {
         });
 
         // Step 3: Dynamically import the generated JavaScript file
-        console.log('Generating JSON...');
-        const { tsObjectArray } = await import(tempFilePath);
+        console.log(`🔄 Loading translation configuration...`);
+        let { locales, translations } = await import(tempFilePath);
 
-        // Step 4: Write the JSON file to the specified output path
-        await fs.outputJson(outputFile, tsObjectArray, { spaces: 2 });
-        console.log(`JSON conversion completed. Output written to: ${outputFile}`);
+        // Step 4: Validate the locales array
+        if (!Array.isArray(locales) || locales.length === 0) {
+            console.warn(`⚠️ Warning: Locales array is empty or invalid. Defaulting to ['en-us'].`);
+            locales = ['en-us'];
+        }
 
-        // Step 5: Cleanup temporary files
-        console.log('Cleaning up temporary files...');
-        fs.removeSync(tempDir);
-        console.log('Temporary files cleaned.');
+        // Step 5: Write the translations content to locale-specific files
+        for (const locale of locales) {
+            const outputFilePath = path.resolve(localesOutputDirectory, `${locale}.json`);
+            await fs.outputJson(outputFilePath, translations, { spaces: 2 });
+            console.log(`✅ Locale file generated: ${outputFilePath}`);
+        }
+
+        console.log(`✅ All locale files generated successfully!`);
     } catch (error) {
-        console.error('An error occurred during conversion:', error instanceof Error ? error.message : error);
+        console.error(`❌ An error occurred during the conversion process:`, error instanceof Error ? error.message : error);
         process.exit(1); // Exit with error code
+    } finally {
+        // Cleanup temporary files
+        console.log(`🧹 Cleaning up temporary files...`);
+        fs.removeSync(tempDir);
+        console.log(`✅ Temporary files cleaned.`);
     }
 }
 
