@@ -7,7 +7,7 @@
     "prepare": "npm run build"
   },
   "bin": {
-    "convert-ts-json": "./index.js"
+    "convert-ts-json": "./dist/index.js"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

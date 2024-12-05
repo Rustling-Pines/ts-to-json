@@ -1,41 +1,44 @@
+#!/usr/bin/env node
+import { execSync } from 'child_process';
 import { register } from 'ts-node';
 import fs from 'fs-extra';
 import path from 'path';
 
-async function convertTsToJson(): Promise<void> {
+async function runAll(): Promise<void> {
     try {
-        // Register ts-node to handle TypeScript files
-        register({
-            project: path.resolve(process.cwd(), 'tsconfig.json'), // Optional: specify a tsconfig.json
+        const tempDir = path.resolve(process.cwd(), 'temp');
+        const inputFile = path.resolve(tempDir, 'ts_object_array.js');
+        const outputFile = path.resolve(process.cwd(), 'public/converted.json');
+
+        // Step 1: Pre-generate the JavaScript file
+        console.log('Compiling TypeScript file...');
+        execSync(`tsc src/conversions/ts_object_array.ts --outDir ${tempDir}`, {
+            stdio: 'inherit',
         });
 
-        // Resolve the path to the TypeScript file
-        const inputFilePath = path.resolve(process.cwd(), 'src/conversions/ts_object_array.ts');
+        // Step 2: Register ts-node for TypeScript support
+        register({
+            project: path.resolve(process.cwd(), 'tsconfig.json'),
+        });
 
-        // Ensure the file exists
-        if (!fs.existsSync(inputFilePath)) {
-            console.error('Input file not found:', inputFilePath);
-            process.exit(1);
-        }
+        // Step 3: Dynamically import the generated JavaScript file
+        console.log('Generating JSON...');
+        const { tsObjectArray } = await import(inputFile);
 
-        // Dynamically import the TypeScript file
-        const { tsObjectArray } = require(inputFilePath);
+        // Step 4: Write the JSON file
+        await fs.outputJson(outputFile, tsObjectArray, { spaces: 2 });
+        console.log(`JSON conversion completed. Output written to: ${outputFile}`);
 
-        // Resolve the output file path
-        const outputFilePath = path.resolve(process.cwd(), 'public/converted.json');
-
-        // Write the filtered array to a JSON file
-        await fs.outputJson(outputFilePath, tsObjectArray, { spaces: 2 });
-        console.log('JSON conversion completed. Output written to:', outputFilePath);
+        // Step 5: Cleanup temporary files
+        console.log('Cleaning up temporary files...');
+        fs.removeSync(tempDir);
+        console.log('Temporary files cleaned.');
     } catch (error) {
-        console.error('An error occurred during conversion:', (error as Error).message);
+        console.error('An error occurred:', error instanceof Error ? error.message : error);
         process.exit(1);
     }
 }
 
-export default convertTsToJson;
-
-// If the file is executed directly, run the function
 if (require.main === module) {
-    convertTsToJson();
+    runAll();
 }
