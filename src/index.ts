@@ -4,24 +4,28 @@ import { execSync } from 'child_process';
 import { register } from 'ts-node';
 import fs from 'fs-extra';
 import path from 'path';
+import dotenv from 'dotenv';
+
+// Load environment variables from a .env file if it exists
+dotenv.config();
 
 async function runAll(): Promise<void> {
     // Default paths for translation file and output JSON directory
-    const defaultTranslationPath = 'src/translations/index.ts'; // Updated for index.ts
+    const defaultTranslationPath = 'src/translations/index.ts';
     const defaultLocalesDir = 'public/locales';
 
     // Read paths from environment variables or fallback to defaults
-    const translationPath = process.env.TRANSLATIONS_INPUT_FILE || defaultTranslationPath;
+    const translationInputFile = process.env.TRANSLATIONS_INPUT_FILE || defaultTranslationPath;
     const localesOutputDirectory = process.env.LOCALES_OUTPUT_DIRECTORY || path.resolve(process.cwd(), defaultLocalesDir);
 
     // Temporary directory and file path
     const tempDir = path.resolve(process.cwd(), '.temp');
-    const tempFilePath = path.resolve(tempDir, path.basename(translationPath, '.ts') + '.js');
+    const tempFilePath = path.resolve(tempDir, path.basename(translationInputFile, '.ts') + '.js');
 
     try {
         // Validate input path
-        if (!fs.existsSync(translationPath)) {
-            throw new Error(`Translation file not found: ${translationPath}`);
+        if (!fs.existsSync(translationInputFile)) {
+            throw new Error(`Translation file not found: ${translationInputFile}`);
         }
 
         // Ensure the output directory exists
@@ -31,12 +35,12 @@ async function runAll(): Promise<void> {
 
         // Logging paths for clarity
         console.log(`🚀 Starting Translations-to-Locales JSON Conversion Process...`);
-        console.log(`📥 Input Translations File (TypeScript): ${translationPath}`);
+        console.log(`📥 Input Translations File: ${translationInputFile}`);
         console.log(`📂 Locales Output Directory: ${localesOutputDirectory}`);
 
         // Step 1: Pre-generate the JavaScript file from the TypeScript file
         console.log(`🛠️ Compiling TypeScript translation file...`);
-        execSync(`tsc ${translationPath} --outDir ${tempDir}`, {
+        execSync(`tsc ${translationInputFile} --outDir ${tempDir}`, {
             stdio: 'inherit', // Display compilation output
         });
 
