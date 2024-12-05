@@ -1,0 +1,42 @@
+{
+  "name": "@rustling-pines/ts-to-json",
+  "version": "0.0.1",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prepare": "npm run build"
+  },
+  "bin": {
+    "convert-ts-json": "./index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "pradeep.betty@gmail.com",
+  "license": "MIT",
+  "homepage": "https://github.com/Rustling-Pines/ts-to-json#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rustling-Pines/ts-to-json.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Rustling-Pines/ts-to-json/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "fs-extra": "^11.2.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.10.1"
+  },
+  "description": "Converts TypeScript arrays into JSON files.",
+  "keywords": [
+    "typescript",
+    "json",
+    "conversion"
+  ]
+}

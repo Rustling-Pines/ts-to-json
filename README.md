@@ -1,2 +1,3 @@
 # ts-to-json
-Typescript Object to Json File
+
+Converts TypeScript arrays into JSON files.
