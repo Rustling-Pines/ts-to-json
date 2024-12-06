@@ -19,10 +19,11 @@ async function runAll(): Promise<void> {
     const tempDir = path.resolve(process.cwd(), '.temp');
 
     try {
+        // Process translations
         await processTranslations(translationInputFile, localesOutputDirectory, tempDir);
     } catch (error) {
         console.error(`❌ An error occurred during the translation process:`, error instanceof Error ? error.message : error);
-        process.exit(1);
+        process.exit(1); // Exit with an error code
     }
 }
 

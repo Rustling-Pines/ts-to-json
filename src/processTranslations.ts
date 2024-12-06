@@ -9,15 +9,13 @@ export async function processTranslations(
     localesOutputDirectory: string,
     tempDir: string
 ): Promise<void> {
-    const relativePath = path.relative('src', path.dirname(translationInputFile));
-    const tempTranslationsDir = path.resolve(tempDir, relativePath);
-    const tempFilePath = path.resolve(tempTranslationsDir, path.basename(translationInputFile, '.ts') + '.js');
+    const tempFileName = path.basename(translationInputFile, '.ts') + '.js';
 
     try {
         console.log(`🛠️  Starting Translation Processing...`);
         console.log(`📥 Input File: ${translationInputFile}`);
         console.log(`📂 Output Directory: ${localesOutputDirectory}`);
-        console.log(`🔧 Temp File Path: ${tempFilePath}`);
+        console.log(`🔧 Temp Directory: ${tempDir}`);
 
         // Ensure the translation input file exists
         if (!fs.existsSync(translationInputFile)) {
@@ -25,9 +23,7 @@ export async function processTranslations(
         }
 
         // Ensure the output directory exists
-        if (!fs.existsSync(localesOutputDirectory)) {
-            fs.mkdirsSync(localesOutputDirectory);
-        }
+        fs.mkdirsSync(localesOutputDirectory);
 
         // Compile the TypeScript file
         console.log(`🛠️  Compiling TypeScript file...`);
@@ -35,27 +31,27 @@ export async function processTranslations(
             stdio: 'inherit',
         });
 
-        // Verify the temp file exists
-        if (!fs.existsSync(tempFilePath)) {
-            console.log(`❌ Temp file not found: ${tempFilePath}`);
-            console.log(`🔍 Debug: Temp directory contents:`);
-            if (fs.existsSync(tempDir)) {
-                const tempFiles = fs.readdirSync(tempDir);
-                tempFiles.forEach(file => console.log(`  - ${file}`));
-            } else {
-                console.log(`⚠️ Temp directory does not exist.`);
-            }
-            throw new Error(`❌ Compiled temp file not found: ${tempFilePath}`);
+        // Search recursively for the compiled file
+        console.log(`🔄 Searching for the compiled temp file...`);
+        const compiledFilePath = findCompiledFile(tempDir, tempFileName);
+
+        if (!compiledFilePath) {
+            console.error(`❌ Compiled temp file not found.`);
+            console.log('🔍 Debug: Temp directory contents:');
+            debugTempDirectory(tempDir);
+            throw new Error(`❌ Compiled file could not be located: ${tempFileName}`);
         }
+
+        console.log(`🔧 Resolved Temp File Path: ${compiledFilePath}`);
 
         // Register ts-node for TypeScript imports
         register({
             project: path.resolve(process.cwd(), 'tsconfig.json'),
         });
 
-        // Dynamically import the generated JavaScript file
-        console.log(`🔄 Loading translation configuration from: ${tempFilePath}`);
-        let { locales, translations } = await import(tempFilePath);
+        // Dynamically import the compiled JavaScript file
+        console.log(`🔄 Loading translation configuration from: ${compiledFilePath}`);
+        let { locales, translations } = await import(compiledFilePath);
 
         // Validate locales array
         if (!Array.isArray(locales) || locales.length === 0) {
@@ -78,15 +74,8 @@ export async function processTranslations(
         console.log(`✅ All locale files generated successfully!`);
     } catch (error) {
         console.error(`❌ Error during processing:`, error instanceof Error ? error.message : error);
-
-        // Debug temp directory contents if an error occurs
-        console.log(`🔍 Debug: Temp directory contents:`);
-        if (fs.existsSync(tempDir)) {
-            const tempFiles = fs.readdirSync(tempDir);
-            tempFiles.forEach(file => console.log(`  - ${file}`));
-        } else {
-            console.log(`⚠️ Temp directory does not exist.`);
-        }
+        console.log('🔍 Debug: Temp directory contents:');
+        debugTempDirectory(tempDir);
         throw error;
     } finally {
         console.log(`🧹 Cleaning up temporary files...`);
@@ -97,4 +86,28 @@ export async function processTranslations(
             console.log(`⚠️ Temp directory already cleaned or missing.`);
         }
     }
+}
+
+// Helper function to find the compiled file recursively
+function findCompiledFile(dir: string, targetFileName: string): string | null {
+    const files = fs.readdirSync(dir, { withFileTypes: true });
+    for (const file of files) {
+        const filePath = path.resolve(dir, file.name);
+        if (file.isFile() && file.name === targetFileName) {
+            return filePath;
+        } else if (file.isDirectory()) {
+            const nestedResult = findCompiledFile(filePath, targetFileName);
+            if (nestedResult) return nestedResult;
+        }
+    }
+    return null;
+}
+
+// Helper function to log the temp directory contents
+function debugTempDirectory(dir: string): void {
+    const files = fs.readdirSync(dir, { withFileTypes: true });
+    files.forEach(file => {
+        const fullPath = path.resolve(dir, file.name);
+        console.log(`  - ${fullPath}`);
+    });
 }
